@@ -1,160 +1,246 @@
-
-
-import React, { useCallback, useState } from "react";
+import React, { useRef, useCallback } from "react";
 import {
   ReactFlow,
-  ReactFlowProvider,
   Controls,
   Background,
+  BackgroundVariant,
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
-  BackgroundVariant,
+  useViewport, // from @xyflow/react
 } from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
 import { nanoid } from "nanoid";
+
+import { useNodeContext } from "../../contexts/NodeContext";
+import Sidebar from "../Sidebar"; //  draggable sidebar
 import StartNode from "../../nodes/StartNode";
 import EndNode from "../../nodes/EndNode";
 import TextUpdaterNode from "../../nodes/TextUpdaterNode";
-import { useNodeContext } from "../../contexts/NodeContext";
 import CustomEdge from "../../edges/CustomEdges";
 
 const rfStyle = {
-    backgroundColor: "#B8CEFF",
-  };
-  
+  backgroundColor: "#1f1f1f",
+};
+
+// 5rem = 80px if 1rem = 16px
+const GAP_PX = 80;
+
+const NODE_WIDTH = 150; // approximate node width
+const NODE_HEIGHT = 60; // approximate node height
+
 const nodeTypes = {
-    start: StartNode,
-    end: EndNode,
-    textUpdater: TextUpdaterNode,
+  start: StartNode,
+  end: EndNode,
+  textUpdater: TextUpdaterNode,
+};
+
+export default function FlowBuilder() {
+  const { nodes, setNodes, edges, setEdges } = useNodeContext();
+
+  // Current pan/zoom from XYFlow’s hook
+  const { x: viewX, y: viewY, zoom } = useViewport();
+
+  // Reference to the wrapper so we can measure boundingRect if needed
+  const flowWrapper = useRef(null);
+
+  //----------------------
+  // Basic react-flow callbacks
+  //----------------------
+  const onNodesChange = useCallback(
+    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    [setNodes]
+  );
+
+  const onEdgesChange = useCallback(
+    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    [setEdges]
+  );
+
+  const onEdgeRemove = useCallback(
+    (id) => {
+      setEdges((eds) => eds.filter((edge) => edge.id !== id));
+    },
+    [setEdges]
+  );
+
+  const edgeTypes = {
+    custom: CustomEdge,
   };
 
-const FlowBuilder = () => {
-    // const [nodes, setNodes] = useState(initialNodes);
-    // const [edges, setEdges] = useState(initialEdges);
-  
-    const { nodes, setNodes, edges, setEdges } = useNodeContext();
-  
-  
-    const onNodesChange = useCallback(
-      (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-      []
-    );
-  
-    // const onEdgesChange = useCallback(
-    //   (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    //   []
-    // );
-    const onEdgesChange = useCallback(
-      (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-      [setEdges]
-    );
-    
-    const onEdgeRemove = useCallback(
-      (id) => {
-        setEdges((eds) => eds.filter((edge) => edge.id !== id)); // Remove the edge by its ID
-      },
-      [setEdges]
-    );
-    const edgeTypes = {
-      custom: CustomEdge, // Register the custom edge
-      
+  const edgeOptions = {
+    type: "custom",
+    data: { onEdgeRemove },
+  };
+
+  const onConnect = useCallback(
+    (params) => {
+      setEdges((eds) =>
+        addEdge({ ...params, animated: true, style: { stroke: "white" } }, eds)
+      );
+    },
+    [setEdges]
+  );
+
+  //----------------------
+  // Collision / Gap Helpers
+  //----------------------
+
+  function getRectWithGap(node) {
+    return {
+      x: node.position.x - GAP_PX / 2,
+      y: node.position.y - GAP_PX / 2,
+      width: NODE_WIDTH + GAP_PX,
+      height: NODE_HEIGHT + GAP_PX,
     };
-    
-    const edgeOptions = {
-      type: "custom", // Set the default edge type to custom
-      data: { onEdgeRemove }, // Pass the `onEdgeRemove` function as data
-    };
-      
-    const onConnect = useCallback(
-      (params) => {
-        setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "white" } }, eds));
-      },
-      []
+  }
+
+  /**
+   * AABB (Axis-Aligned Bounding Box) overlap check.
+   */
+  function rectsOverlap(r1, r2) {
+    return !(
+      r1.x + r1.width < r2.x ||
+      r1.x > r2.x + r2.width ||
+      r1.y + r1.height < r2.y ||
+      r1.y > r2.y + r2.height
     );
-  
-    // Handle edge click to remove the edge
-    const onEdgeClick = useCallback(
-      (event, edge) => {
-        event.stopPropagation(); // Prevent triggering other events
-        const shouldDelete = window.confirm("Do you want to delete this connection?");
-        if (shouldDelete) {
-          setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+  }
+
+  /**
+   * Checks if nodeA and nodeB violate the 5rem gap.
+   */
+  function violatesGap(nodeA, nodeB) {
+    const rA = getRectWithGap(nodeA);
+    const rB = getRectWithGap(nodeB);
+    return rectsOverlap(rA, rB);
+  }
+
+  //----------------------
+  // BFS push function:
+  //   place the "sourceNode" at its new position,
+  // then push away any node that violates the gap,
+  // and repeat if that push causes new collisions.
+  //----------------------
+  function pushOthers(sourceNode, allNodes) {
+    // We’ll keep a queue of nodeIds that we need to check for collisions
+    const queue = [sourceNode.id];
+    const visited = new Set([sourceNode.id]);
+
+    // The amount to push each collision
+    // You can adjust or even randomize direction
+    const SHIFT_X = 120;
+    const SHIFT_Y = 90;
+
+    let iterations = 0;
+    const MAX_ITERATIONS = 200;
+
+    while (queue.length && iterations < MAX_ITERATIONS) {
+      iterations++;
+
+      const currentId = queue.shift();
+      const currentNode = allNodes.find((n) => n.id === currentId);
+      if (!currentNode) continue;
+
+      // Check collisions vs. all other nodes
+      for (const other of allNodes) {
+        if (other.id === currentId) continue;
+
+        // If they overlap or the gap is violated, push "other"
+        if (violatesGap(currentNode, other)) {
+          // Move other node
+          other.position = {
+            x: other.position.x + SHIFT_X,
+            y: other.position.y + SHIFT_Y,
+          };
+
+          // Now we have to check if "other" collides with others
+          if (!visited.has(other.id)) {
+            queue.push(other.id);
+            visited.add(other.id);
+          }
         }
-      },
-      []
-    );
-  
-    const onAddNode = useCallback(() => {
-      const lastNode = nodes[nodes.length - 1];
-      const newPosition = lastNode
-        ? { x: lastNode.position.x, y: lastNode.position.y + 150 }
-        : { x: 0, y: 0 };
-  
+      }
+    }
+  }
+
+  //----------------------
+  // 1) Drop -> place new node exactly at the drop
+  // 2) BFS push existing nodes if they violate the gap with the new node
+  //----------------------
+  const onDrop = useCallback(
+    (event) => {
+      event.preventDefault();
+
+      const nodeType = event.dataTransfer.getData("application/reactflow");
+      if (!nodeType) return;
+
+      const boundingRect = flowWrapper.current?.getBoundingClientRect();
+      if (!boundingRect) return;
+
+      // Convert screen coords -> XYFlow coords
+      const dropX = (event.clientX - boundingRect.left - viewX) / zoom;
+      const dropY = (event.clientY - boundingRect.top - viewY) / zoom;
+
       const newNode = {
-        // id: `node-${nodes.length + 1}`,
-        id:nanoid(),
-        type: "textUpdater",
-        position: newPosition,
-        data: { message: "", options: [] },
-        
+        id: nanoid(),
+        type: nodeType,
+        data: { label: `${nodeType} Node` },
+        position: { x: dropX, y: dropY },
       };
-  
-      setNodes((nds) => [...nds, newNode]);
-    }, [nodes]);
-  
-  console.log(nodes,"nodes");
-  console.log(edges,"edges");
-  
-    
-  
-    return (
-      <>
+
+      // 1) Add new node
+      setNodes((prev) => {
+        const updated = [...prev, newNode];
+        // 2) Now push any node that violates the gap with the newly placed node
+        pushOthers(newNode, updated);
+        return updated;
+      });
+    },
+    [zoom, viewX, viewY, setNodes]
+  );
+
+  const onDragOver = (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  };
+  console.log(nodes, edges);
+
+  return (
+    <div style={{ display: "flex", width: "100%" }}>
+      <div style={{ flex: 1, height: "100vh" }} ref={flowWrapper}>
         <ReactFlow
-        colorMode="dark"
+          proOptions={{ hideAttribution: true }} //need to subscribe
           nodes={nodes}
           edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={edgeOptions}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          // onEdgeClick={onEdgeClick} // Add this for edge removal
-          nodeTypes={nodeTypes}
-          // defaultEdgeOptions={edgeOptions}
-          edgeTypes={edgeTypes} // Pass the custom edge types
-    defaultEdgeOptions={edgeOptions} // Pass the default edge options
           style={rfStyle}
           fitView
+          onDrop={onDrop}
+          onInit={(instance) => {
+            instance.setViewport({ zoom: 0.8 });
+          }}
+          onDragOver={onDragOver}
         >
-          <Background color="#fff" variant={BackgroundVariant.Dots} />
-          <Controls />
+          <Background
+            color="#ffffff40"
+            variant={BackgroundVariant.Dots}
+            gap={30}
+            size={1.5}
+          />
+          <Controls
+            className="my-custom-controls"
+            showZoom
+            showFitView
+            showInteractive
+          />
         </ReactFlow>
-        <button
-          onClick={onAddNode}
-          className="bg-gray-600 px-4 py-2 text-sm text-white rounded absolute left-5 top-5"
-        >
-          Add Node
-        </button>
-  
-        <button
-    onClick={() => {
-      const jsonData = JSON.stringify({ nodes, edges }, null, 2); // Convert to JSON string
-      const blob = new Blob([jsonData], { type: "application/json" }); // Create a Blob
-      const url = URL.createObjectURL(blob); // Create a URL for the Blob
-  
-      const a = document.createElement("a"); // Create a temporary anchor element
-      a.href = url;
-      a.download = "flow-data.json"; // File name for download
-      document.body.appendChild(a); // Append anchor to body
-      a.click(); // Trigger click to download
-      document.body.removeChild(a); // Remove anchor after download
-    }}
-    className="bg-gray-600 px-4 py-2 text-sm text-white rounded absolute left-5 top-20"
-  >
-    Download Nodes and Edges
-  </button>
-  
-      </>
-    );
-  };
-
-export default FlowBuilder
+      </div>
+      <Sidebar />
+    </div>
+  );
+}
