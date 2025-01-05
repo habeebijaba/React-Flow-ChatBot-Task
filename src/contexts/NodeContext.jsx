@@ -1,4 +1,3 @@
-// src/contexts/NodeContext.js
 import React, { createContext, useContext, useState } from "react";
 import { nanoid } from "nanoid";
 const NodeContext = createContext();
@@ -13,19 +12,17 @@ const initialNodes = [
     id: nanoid(),
     type: "textUpdater",
     position: { x: 150, y: 0 }, // Right of the Start node
-    data: { value: 123 },
+    data: {},
   },
   {
     id: "end",
     type: "end",
-    position: { x: 650, y: 0 }, // Right of the TextUpdaterNode
+    position: { x: 550, y: 0 }, // Right of the TextUpdaterNode
     data: { label: "End" },
   },
 ];
 
-
 export const NodeProvider = ({ children }) => {
-
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState([]);
 
