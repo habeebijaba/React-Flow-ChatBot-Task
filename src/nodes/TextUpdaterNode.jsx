@@ -1,205 +1,84 @@
-// import React, { useState, useCallback, useEffect } from "react";
-// import { Handle, Position } from "@xyflow/react";
-// import { useNodeContext } from "../contexts/NodeContext";
-
-// const TextUpdaterNode = ({ data, isConnectable, id }) => {
-//   const [message, setMessage] = useState(data?.message || "");
-//   const [options, setOptions] = useState(data?.options || []);
-//   const { setNodes, setEdges } = useNodeContext();
-
-//   // Update the node's data when `message` or `options` change
-//   useEffect(() => {
-//     setNodes((prevNodes) =>
-//       prevNodes.map((node) =>
-//         node.id === id ? { ...node, data: { message, options } } : node
-//       )
-//     );
-//   }, [message, options, id, setNodes]);
-
-//   // Handle message input change
-//   const handleMessageChange = useCallback((e) => {
-//     setMessage(e.target.value); // Update state for message
-//   }, []);
-
-//   // Handle adding a new option input
-//   const addOption = useCallback(() => {
-//     const newOption = { id: Date.now(), value: "" };
-//     setOptions((prevOptions) => [...prevOptions, newOption]); // Add a new option
-//   }, []);
-
-//   // Handle removing an option input
-//   const removeOption = useCallback((optionId) => {
-//     setOptions((prevOptions) =>
-//       prevOptions.filter((option) => option.id !== optionId)
-//     ); // Remove the specific option
-//   }, []);
-
-//   // Handle option input change
-//   const handleOptionChange = useCallback((optionId, value) => {
-//     setOptions((prevOptions) =>
-//       prevOptions.map((option) =>
-//         option.id === optionId ? { ...option, value } : option
-//       )
-//     ); // Update specific option value
-//   }, []);
-
-//   // Handle deleting the node and related edges
-//   const handleDeleteNode = useCallback(() => {
-//     setNodes((prevNodes) => prevNodes.filter((node) => node.id !== id));
-//     setEdges((prevEdges) =>
-//       prevEdges.filter((edge) => edge.source !== id && edge.target !== id)
-//     );
-//   }, [id, setNodes, setEdges]);
-
-//   return (
-//     <div className="bg-white shadow-lg rounded-lg w-[25rem] p-4 flex flex-col space-y-4 relative">
-//       {/* Header and delete button */}
-//       <div className="flex justify-between items-center">
-//         <div className="font-semibold text-lg text-gray-700">
-//           CONDITIONAL PATH
-//         </div>
-//         <button
-//           onClick={handleDeleteNode}
-//           className="text-red-500 hover:text-red-700 text-sm"
-//         >
-//           🗑️
-//         </button>
-//       </div>
-
-//       {/* Message input */}
-//       <div>
-//         <label
-//           htmlFor="text"
-//           className="block text-sm font-medium text-gray-600"
-//         >
-//           Message:
-//         </label>
-//         <input
-//           id="text"
-//           name="text"
-//           type="text"
-//           className="mt-1 block w-full p-2 border border-gray-300 rounded-md text-sm"
-//           value={message}
-//           onChange={handleMessageChange}
-//           placeholder="Enter message"
-//         />
-//       </div>
-
-//       {/* Options */}
-//       <div className="space-y-3">
-//         <div className="font-semibold text-gray-700">Options:</div>
-//         {options.map((option) => (
-//           <div key={option.id} className="flex items-center space-x-2 relative">
-//             {/* Option input */}
-//             <input
-//               type="text"
-//               className="w-full p-2 border border-gray-300 rounded-md text-sm"
-//               value={option.value}
-//               onChange={(e) => handleOptionChange(option.id, e.target.value)}
-//               placeholder="Option"
-//             />
-//             {/* Remove option button */}
-//             <button
-//               onClick={() => removeOption(option.id)}
-//               className="text-red-500 hover:text-red-700 text-sm"
-//             >
-//               ❌
-//             </button>
-//             {/* Edge for option */}
-//             <Handle
-//               type="source"
-//               position={Position.Right}
-//               id={`option-${option.id}`}
-//               style={{
-//                 position: "absolute",
-//                 right: "-10px",
-//                 top: "50%",
-//                 transform: "translateY(-50%)",
-//                 width: "10px",
-//                 height: "10px",
-//                 background: "#fff",
-//                 borderRadius: "50%",
-//                 border: "1px solid #000",
-//               }}
-//               isConnectable={isConnectable}
-//             />
-//           </div>
-//         ))}
-//       </div>
-
-//       {/* Add new option button */}
-//       <button
-//         onClick={addOption}
-//         className="mt-2 w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-md text-sm"
-//       >
-//         + Add Option
-//       </button>
-
-//       {/* Bottom handle (to connect the node container) */}
-//       <Handle
-//         type="target"
-//         position={Position.Bottom}
-//         id={`node-${id}-bottom`}
-//         style={{
-//           position: "absolute",
-//           left: "50%",
-//           bottom: "-10px",
-//           transform: "translateX(-50%)",
-//           width: "10px",
-//           height: "10px",
-//           background: "#fff",
-//           borderRadius: "50%",
-//           border: "1px solid #000",
-//         }}
-//         isConnectable={isConnectable}
-//       />
-//     </div>
-//   );
-// };
-
-// export default TextUpdaterNode;
-
-
-import React, { useState, useCallback, useEffect, memo } from "react";
+import React, { memo, useCallback } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { useNodeContext } from "../contexts/NodeContext";
 
-const TextUpdaterNode = memo(({ data, isConnectable, id }) => {
-  const [message, setMessage] = useState(data?.message || "");
-  const [options, setOptions] = useState(data?.options || []);
+const TextUpdaterNode = memo(({ data, selected, isConnectable, id }) => {
   const { setNodes, setEdges } = useNodeContext();
 
-  useEffect(() => {
-    setNodes((prevNodes) =>
-      prevNodes.map((node) =>
-        node.id === id ? { ...node, data: { message, options } } : node
-      )
-    );
-  }, [message, options, id, setNodes]);
+  const message = data?.message || "";
+  const options = data?.options || [];
 
-  const handleMessageChange = useCallback((e) => {
-    setMessage(e.target.value.trimStart());
-  }, []);
+  // Update the node's message in the global state
+  const handleMessageChange = useCallback(
+    (e) => {
+      const newMsg = e.target.value.trimStart();
+      setNodes((prev) =>
+        prev.map((node) =>
+          node.id === id
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  message: newMsg,
+                },
+              }
+            : node
+        )
+      );
+    },
+    [id, setNodes]
+  );
 
+  // Add a new option
   const addOption = useCallback(() => {
-    const newOption = { id: Date.now(), value: "" };
-    setOptions((prevOptions) => [...prevOptions, newOption]);
-  }, []);
-
-  const removeOption = useCallback((optionId) => {
-    setOptions((prevOptions) =>
-      prevOptions.filter((option) => option.id !== optionId)
+    setNodes((prev) =>
+      prev.map((node) => {
+        if (node.id !== id) return node;
+        const currentOptions = node.data?.options || [];
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            options: [...currentOptions, { id: Date.now(), value: "" }],
+          },
+        };
+      })
     );
-  }, []);
+  }, [id, setNodes]);
 
-  const handleOptionChange = useCallback((optionId, value) => {
-    setOptions((prevOptions) =>
-      prevOptions.map((option) =>
-        option.id === optionId ? { ...option, value } : option
-      )
-    );
-  }, []);
+  // Remove an option by ID
+  const removeOption = useCallback(
+    (optionId) => {
+      setNodes((prev) =>
+        prev.map((node) => {
+          if (node.id !== id) return node;
+          const filtered = (node.data?.options || []).filter(
+            (opt) => opt.id !== optionId
+          );
+          return { ...node, data: { ...node.data, options: filtered } };
+        })
+      );
+    },
+    [id, setNodes]
+  );
 
+  // Update an existing option's value
+  const handleOptionChange = useCallback(
+    (optionId, value) => {
+      setNodes((prev) =>
+        prev.map((node) => {
+          if (node.id !== id) return node;
+          const updatedOptions = (node.data?.options || []).map((opt) =>
+            opt.id === optionId ? { ...opt, value } : opt
+          );
+          return { ...node, data: { ...node.data, options: updatedOptions } };
+        })
+      );
+    },
+    [id, setNodes]
+  );
+
+  // Delete the entire node
   const handleDeleteNode = useCallback(() => {
     setNodes((prevNodes) => prevNodes.filter((node) => node.id !== id));
     setEdges((prevEdges) =>
@@ -209,36 +88,81 @@ const TextUpdaterNode = memo(({ data, isConnectable, id }) => {
 
   return (
     <div
-      className="bg-white shadow-lg rounded-lg w-[25rem] p-4 flex flex-col space-y-4 relative focus-within:ring-2 focus-within:ring-blue-500"
-      aria-label="Conditional Path Node"
+      data-selected={selected}
+      className={`flex flex-col border w-[20rem] border-[#3c3c3c] rounded-xl bg-[#2d2d2d] p-4 shadow-sm text-white transition relative
+        ${selected ? "border-teal-600 ring-1 ring-teal-600/100" : ""}`}
+      aria-label="Text Updater Node"
     >
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="font-semibold text-lg text-gray-700" aria-label="Node Title">
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="font-semibold text-base" aria-label="Node Title">
           Conditional Path
         </h2>
-        <button
-          onClick={handleDeleteNode}
-          className="text-red-500 hover:text-red-700 text-sm"
-          aria-label="Delete Node"
-        >
-          🗑️
+        <button onClick={handleDeleteNode} aria-label="Delete Node">
+          <span>
+            <svg
+              width="18px"
+              height="18px"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <title>Delete</title>
+
+              <path
+                d="M10 11V17"
+                stroke="#f87171 "
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M14 11V17"
+                stroke="#f87171 "
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M4 7H20"
+                stroke="#f87171 "
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M6 7H12H18V18C18 19.6569 16.6569 21 15 21H9C7.34315 21 6 19.6569 6 18V7Z"
+                stroke="#f87171 "
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5V7H9V5Z"
+                stroke="#f87171 "
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
         </button>
       </div>
 
       {/* Message Input */}
-      <div>
+      <div className="mb-2">
         <label
           htmlFor={`message-${id}`}
-          className="block text-sm font-medium text-gray-600"
+          className="block text-sm font-medium text-gray-200"
         >
-          Message:
+          Message
         </label>
         <input
           id={`message-${id}`}
           name="message"
           type="text"
-          className="mt-1 block w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+          className="mt-1 block w-full p-2 border border-[#3c3c3c] rounded-md text-sm bg-[#1f1f1f]
+            focus:ring-teal-600 focus:border-teal-600"
           value={message}
           onChange={handleMessageChange}
           placeholder="Enter a message"
@@ -247,50 +171,65 @@ const TextUpdaterNode = memo(({ data, isConnectable, id }) => {
       </div>
 
       {/* Options */}
-      <div className="space-y-3">
-        <p className="font-semibold text-gray-700">Options:</p>
-        {options.map((option) => (
-          <div key={option.id} className="flex items-center space-x-2 relative">
-            <input
-              type="text"
-              className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-              value={option.value}
-              onChange={(e) => handleOptionChange(option.id, e.target.value)}
-              placeholder="Option"
-              aria-label={`Option Input ${option.id}`}
-            />
-            <button
-              onClick={() => removeOption(option.id)}
-              className="text-red-500 hover:text-red-700 text-sm"
-              aria-label={`Remove Option ${option.id}`}
+      <div className="mb-2">
+        <p className="font-semibold text-sm text-gray-200">Options</p>
+        <div className="space-y-2 mt-2">
+          {options.map((option) => (
+            <div
+              key={option.id}
+              className="flex items-center space-x-2 relative"
             >
-              ❌
-            </button>
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={`option-${option.id}`}
-              style={{
-                position: "absolute",
-                right: "-10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: "10px",
-                height: "10px",
-                background: "#fff",
-                borderRadius: "50%",
-                border: "1px solid #000",
-              }}
-              isConnectable={isConnectable}
-            />
-          </div>
-        ))}
+              <input
+                type="text"
+                className="flex-1 p-2 border border-[#3c3c3c] rounded-md text-sm bg-[#1f1f1f]
+                  focus:ring-teal-600 focus:border-teal-600"
+                value={option.value}
+                onChange={(e) => handleOptionChange(option.id, e.target.value)}
+                placeholder="Option"
+                aria-label={`Option Input ${option.id}`}
+              />
+              <button
+                onClick={() => removeOption(option.id)}
+                className="text-red-500 hover:text-red-700 text-sm"
+                aria-label={`Remove Option ${option.id}`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="20px"
+                  width="20px"
+                  fill="#f87171"
+                  className="transition-colors group-hover:fill-white"
+                  viewBox="0 -960 960 960"
+                >
+                  <path d="m336-280-56-56 144-144-144-143 56-56 144 144 143-144 56 56-144 143 144 144-56 56-143-144-144 144Z" />
+                </svg>
+              </button>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={`option-${option.id}`}
+                style={{
+                  position: "absolute",
+                  right: "-22px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "10px",
+                  height: "10px",
+                  background: "#1f1f1f",
+                  border: "2px solid #fff",
+                  borderRadius: "50%",
+                }}
+                isConnectable={isConnectable}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Add Option Button */}
       <button
         onClick={addOption}
-        className="mt-2 w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-md text-sm"
+        className="mt-2 w-full bg-[#3c3c3c] hover:bg-[#4c4c4c] text-white font-semibold py-2 rounded-md text-sm"
         aria-label="Add New Option"
       >
         + Add Option
@@ -306,11 +245,11 @@ const TextUpdaterNode = memo(({ data, isConnectable, id }) => {
           left: "-6px",
           top: "50%",
           transform: "translateY(-50%)",
-          width: "10px",
-          height: "10px",
-          background: "#fff",
+          width: "12px",
+          height: "12px",
+          background: "#1f1f1f",
+          border: "2px solid #fff",
           borderRadius: "50%",
-          border: "1px solid #000",
         }}
         isConnectable={isConnectable}
       />
