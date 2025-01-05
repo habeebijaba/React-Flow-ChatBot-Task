@@ -25,107 +25,55 @@ const CustomEdge = ({
 
   return (
     <>
-      {/* Render the edge */}
+      {/* Render the edge path */}
       <path
         id={id}
-        style={style}
-        className="react-flow__edge-path"
+        style={{
+          animation: "none", // Disable animations
+          transition: "none", // Disable transitions
+          stroke: "#b1b1b7", // edge color
+          strokeWidth: 1, // line width
+          strokeDasharray: "none", // make the line solid
+          fill: "none", // Ensure no fill
+        }}
+        className="custom-edge-path"
         d={edgePath}
         markerEnd={markerEnd}
       />
-      {/* Render the close icon */}
+      {/* Render the close button */}
       <foreignObject
-        width={20}
-        height={20}
-        x={labelX - 10} // Center the close icon horizontally
-        y={labelY - 10} // Center the close icon vertically
+        width={30}
+        height={30}
+        x={labelX - 15} // Center the button horizontally
+        y={labelY - 15} // Center the button vertically
         className="edge-close-icon"
       >
-        <div
+        <button
+          type="button"
+          className="group pointer-events-auto w-full h-full flex items-center justify-center rounded-full bg-[#1f1f1f] transition-colors shadow-md hover:bg-[#91919a] hover:border border-[#ffffff40] "
           style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            // background: "white",
-            borderRadius: "50%",
             cursor: "pointer",
-            // border: "1px solid #ccc",
           }}
           onClick={() => {
             if (data?.onEdgeRemove) {
-              data.onEdgeRemove(id); // Call the custom edge removal logic
+              data.onEdgeRemove(id);
             }
           }}
         >
-          ❌
-        </div>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            height="20px"
+            width="20px"
+            fill="#f87171"
+            className="transition-colors group-hover:fill-white"
+            viewBox="0 -960 960 960"
+          >
+            <path d="m336-280-56-56 144-144-144-143 56-56 144 144 143-144 56 56-144 143 144 144-56 56-143-144-144 144Z" />
+          </svg>
+        </button>
       </foreignObject>
     </>
   );
 };
 
 export default CustomEdge;
-
-
-// import { BezierEdge, EdgeLabelRenderer, getBezierPath, useReactFlow } from "@xyflow/react";
-
-// export default function CustomDeletableEdge(props) {
-//     const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition } = props;
-
-//     const { setEdges } = useReactFlow();
-
-//     // Calculate the bezier path and label position
-//     const [_, labelX, labelY] = getBezierPath({
-//         sourceX,
-//         sourceY,
-//         sourcePosition,
-//         targetX,
-//         targetY,
-//         targetPosition,
-//     });
-
-//     return (
-//         <>
-//             {/* Render the default bezier edge */}
-//             <BezierEdge {...props} />
-
-//             {/* Render the close icon */}
-//             <EdgeLabelRenderer>
-//                 <button
-//                     type="button"
-//                     style={{
-//                         position: "absolute",
-//                         transform: `translate(${labelX}px, ${labelY}px) translate(-50%, -50%)`,
-//                         width: "20px",
-//                         height: "20px",
-//                         display: "flex",
-//                         justifyContent: "center",
-//                         alignItems: "center",
-//                         backgroundColor: "#333", // Dark background
-//                         color: "#f87171", // Red for close icon
-//                         borderRadius: "50%", // Circular button
-//                         border: "1px solid #444", // Subtle border
-//                         boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)", // Light shadow
-//                         cursor: "pointer",
-//                         transition: "all 0.2s ease", // Smooth hover effect
-//                     }}
-//                     onMouseOver={(e) => {
-//                         e.currentTarget.style.backgroundColor = "#444"; // Lighter background
-//                         e.currentTarget.style.color = "#fff"; // White icon on hover
-//                         e.currentTarget.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.4)";
-//                     }}
-//                     onMouseOut={(e) => {
-//                         e.currentTarget.style.backgroundColor = "#333"; // Original background
-//                         e.currentTarget.style.color = "#f87171"; // Red icon
-//                         e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.2)";
-//                     }}
-//                     onClick={() => setEdges((edges) => edges.filter((edge) => edge.id !== id))}
-//                 >
-//                     ✖ {/* Unicode for close icon */}
-//                 </button>
-//             </EdgeLabelRenderer>
-//         </>
-//     );
-// }
